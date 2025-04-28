@@ -6,7 +6,7 @@ import assets from '@/assets/assets';
 import { useAppContext } from '@/context/AppContext';
 import toast from 'react-hot-toast';
 import axios from 'axios';
-import { getAuth } from "@clerk/nextjs/server";
+import { useAuth } from '@clerk/nextjs';
 
 const Chatlabel = ({ chat, openMenu, setOpenMenu }) => {
   const { fetchUsersChats, setSelectedChat } = useAppContext();
