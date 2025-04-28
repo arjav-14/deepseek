@@ -10,6 +10,7 @@ import { useAuth } from '@clerk/nextjs';
 
 const Chatlabel = ({ chat, openMenu, setOpenMenu }) => {
   const { fetchUsersChats, setSelectedChat } = useAppContext();
+  const { getToken } = useAuth();
 
   if (!chat?._id) {
     return null;
@@ -25,10 +26,19 @@ const Chatlabel = ({ chat, openMenu, setOpenMenu }) => {
       const newname = prompt('Enter new chat name:');
       if (!newname?.trim()) return;
 
-      const { data } = await axios.post('/api/clerk/Chat/rename', { 
-        chatId: chat._id, 
-        name: newname.trim() 
-      });
+      const token = await getToken();
+      const { data } = await axios.post('/api/clerk/Chat/rename', 
+        { 
+          chatId: chat._id, 
+          name: newname.trim() 
+        },
+        {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          }
+        }
+      );
 
       if (data.success) {
         fetchUsersChats();
@@ -48,11 +58,18 @@ const Chatlabel = ({ chat, openMenu, setOpenMenu }) => {
       e.stopPropagation(); // Prevent chat selection when clicking delete
       const confirmDelete = confirm('Are you sure you want to delete this chat?');
       if (!confirmDelete) return;
-  
-      const { data } = await axios.post('/api/clerk/Chat/delete', { 
-        chatId: chat._id 
-      });
-  
+
+      const token = await getToken();
+      const { data } = await axios.post('/api/clerk/Chat/delete', 
+        { chatId: chat._id },
+        {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          }
+        }
+      );
+
       if (data.success) {
         // If this was the selected chat, reset it
         setSelectedChat(prev => prev?._id === chat._id ? null : prev);
