@@ -14,6 +14,7 @@ const PromptBox = ({ Loading, setLoading }) => {
 
     const sendPrompt = async (e) => {
         e.preventDefault();
+        let currentPrompt = ''; // Declare at the top of function
         
         try {
             if (!user) {
@@ -24,12 +25,12 @@ const PromptBox = ({ Loading, setLoading }) => {
                 return toast.error('Please wait for the previous response');
             }
 
-            if (!prompt.trim()) {
+            currentPrompt = prompt.trim(); // Assign value after validation
+            if (!currentPrompt) {
                 return toast.error('Please enter a message');
             }
 
             setLoading(true);
-            const currentPrompt = prompt.trim();
             setPrompt('');
 
             // Create user message
@@ -63,7 +64,8 @@ const PromptBox = ({ Loading, setLoading }) => {
                 headers: {
                     'Authorization': `Bearer ${token}`,
                     'Content-Type': 'application/json'
-                }
+                },
+                timeout: 60000 // Add 60 second timeout
             });
 
             if (!data.success) {
@@ -85,8 +87,11 @@ const PromptBox = ({ Loading, setLoading }) => {
             await refreshCurrentChat();
 
         } catch (error) {
+            console.error('Send prompt error:', error);
+            if (currentPrompt) {
+                setPrompt(currentPrompt); // Restore prompt only if it was set
+            }
             toast.error(error.message || 'An error occurred');
-            setPrompt(currentPrompt);
         } finally {
             setLoading(false);
         }
@@ -131,10 +136,10 @@ const PromptBox = ({ Loading, setLoading }) => {
                         className={`${prompt.trim() ? "bg-blue-400" : "bg-[#71717a]"} rounded-full p-2 cursor-pointer`}
                         disabled={!prompt.trim() || Loading}
                     >
-                        <Image 
+                        <Image
                             className="w-3.5 aspect-square" 
                             src={prompt.trim() ? assets.arrow_icon : assets.arrow_icon_dull} 
-                            alt="" 
+                            alt=""
                         />
                     </button>
                 </div>
