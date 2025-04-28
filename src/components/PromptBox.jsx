@@ -7,14 +7,45 @@ import toast from 'react-hot-toast';
 import axios from 'axios';
 import { useAuth } from '@clerk/nextjs';
 
+const MAX_RETRIES = 3;
+const RETRY_DELAY = 2000; // 2 seconds
+const TIMEOUT = 120000; // 2 minutes
+
 const PromptBox = ({ Loading, setLoading }) => {
     const [prompt, setPrompt] = useState('');
     const { user, selectedChat, setSelectedChat, createNewChat, refreshCurrentChat } = useAppContext();
     const { getToken } = useAuth();
 
+    const sendAIRequest = async (chatId, prompt, token, retryCount = 0) => {
+        try {
+            const { data } = await axios.post('/api/clerk/Chat/ai', 
+                {
+                    chatId,
+                    prompt
+                },
+                {
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json'
+                    },
+                    timeout: TIMEOUT
+                }
+            );
+            return data;
+        } catch (error) {
+            if ((error.code === 'ECONNABORTED' || error.response?.status === 504) 
+                && retryCount < MAX_RETRIES) {
+                console.log(`Retry attempt ${retryCount + 1} of ${MAX_RETRIES}`);
+                await new Promise(resolve => setTimeout(resolve, RETRY_DELAY));
+                return sendAIRequest(chatId, prompt, token, retryCount + 1);
+            }
+            throw error;
+        }
+    };
+
     const sendPrompt = async (e) => {
         e.preventDefault();
-        let currentPrompt = ''; // Declare at the top of function
+        let currentPrompt = ''; 
         
         try {
             if (!user) {
@@ -25,7 +56,7 @@ const PromptBox = ({ Loading, setLoading }) => {
                 return toast.error('Please wait for the previous response');
             }
 
-            currentPrompt = prompt.trim(); // Assign value after validation
+            currentPrompt = prompt.trim(); 
             if (!currentPrompt) {
                 return toast.error('Please enter a message');
             }
@@ -33,7 +64,6 @@ const PromptBox = ({ Loading, setLoading }) => {
             setLoading(true);
             setPrompt('');
 
-            // Create user message
             const userMessage = {
                 role: 'user',
                 content: currentPrompt,
@@ -57,16 +87,8 @@ const PromptBox = ({ Loading, setLoading }) => {
             }));
 
             const token = await getToken();
-            const { data } = await axios.post('/api/clerk/Chat/ai', {
-                chatId: currentChat._id,
-                prompt: currentPrompt
-            }, {
-                headers: {
-                    'Authorization': `Bearer ${token}`,
-                    'Content-Type': 'application/json'
-                },
-                timeout: 60000 // Add 60 second timeout
-            });
+            
+            const data = await sendAIRequest(currentChat._id, currentPrompt, token);
 
             if (!data.success) {
                 toast.error(data.message || 'Failed to get AI response');
@@ -89,9 +111,13 @@ const PromptBox = ({ Loading, setLoading }) => {
         } catch (error) {
             console.error('Send prompt error:', error);
             if (currentPrompt) {
-                setPrompt(currentPrompt); // Restore prompt only if it was set
+                setPrompt(currentPrompt); 
             }
-            toast.error(error.message || 'An error occurred');
+            toast.error(
+                error.code === 'ECONNABORTED' 
+                    ? 'Request timed out. The AI is taking too long to respond.'
+                    : error.response?.data?.message || 'Failed to get AI response'
+            );
         } finally {
             setLoading(false);
         }
