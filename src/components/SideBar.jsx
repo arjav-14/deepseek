@@ -6,7 +6,7 @@ import { useAppContext } from '@/context/AppContext';
 import Chatlabel from './Chatlabel';
 const SideBar = ({ expand, setExpand }) => {
   const {openSignIn} = useClerk()
-  const {user} = useAppContext();
+  const {user, chats , createNewChat} = useAppContext();
   const [openMenu , setOpenMenu] = React.useState({id: 0 , open : false})
   return (
     <div className={`flex flex-col justify-between bg-black pt-7 transition-all z-50 max-md:absolute max-md:h-screen ${expand ? 'p-4 w-64' : 'md:w-20 min-w-20 max-md:overflow-hidden'}`}>
@@ -45,7 +45,7 @@ const SideBar = ({ expand, setExpand }) => {
         </div>
 
         {/* New Chat Button */}
-        <button
+        <button onClick={createNewChat}
   className={`mt-8 flex items-center justify-center cursor-pointer ${
     expand
       ? "bg-blue-500 hover:opacity-90 rounded-2xl gap-2 p-2.5 w-max"
@@ -73,10 +73,21 @@ const SideBar = ({ expand, setExpand }) => {
 </button>
 
 
-        {/* Recents Label */}
-        <div className={`mt-8 text-white/25 text font-medium ${expand ? "block" : "hidden"}`}>
-          <p className='my-1'>Recents</p>
-          <Chatlabel openMenu={openMenu}  setOpenMenu={setOpenMenu}/>
+        {/* Recents Section */}
+        <div className={`mt-8 flex flex-col h-[calc(100vh-350px)] ${expand ? "block" : "hidden"}`}>
+          <p className='text-white/25 font-medium mb-2 px-2'>Recents</p>
+          
+          {/* Chat List without scrollbar */}
+          <div className="flex-1 overflow-y-auto hide-scrollbar">
+            {chats.map((chat) => (
+              <Chatlabel
+                key={chat._id}
+                chat={chat}
+                openMenu={openMenu}
+                setOpenMenu={setOpenMenu}
+              />
+            ))}
+          </div>
         </div>
       </div>
 
